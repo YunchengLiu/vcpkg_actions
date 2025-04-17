@@ -2,8 +2,6 @@
 *.d
 
 # Compiled Object files
-*.slo
-*.lo
 *.o
 *.obj
 
@@ -21,14 +19,74 @@
 *.smod
 
 # Compiled Static libraries
-*.lai
-*.la
 *.a
 *.lib
 
 # Executables
 *.exe
-*.out
-*.app
 
+# Build directories
+build/
+out/
+cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Visual Studio files
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+ipch/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# CLion
+.idea/
+cmake-build-*/
+
+# vcpkg specific
+# Uncomment if vcpkg is not a submodule
+# vcpkg/
 vcpkg_installed/
+
+# Dependency directories if not using vcpkg manifest
+packages/
+
+# Platform specific
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
