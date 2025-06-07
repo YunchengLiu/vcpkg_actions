@@ -1,3 +1,5 @@
 [submodule "vcpkg"]
+	# git submodule update --remote
 	path = vcpkg
 	url = https://github.com/microsoft/vcpkg.git
+	branch = master

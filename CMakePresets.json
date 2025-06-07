@@ -70,6 +70,20 @@
       }
     },
     {
+      "name" : "macos-clang",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
       "name": "windows-msvc-debug",
       "displayName": "Windows MSVC Debug",
       "inherits": ["windows-msvc", "base-debug"]
@@ -88,6 +102,16 @@
       "name": "linux-gcc-release",
       "displayName": "Linux GCC Release",
       "inherits": ["linux-gcc", "base-release"]
+    },
+    {
+      "name": "macos-clang-debug",
+      "displayName": "macOS Clang Debug",
+      "inherits": ["macos-clang", "base-debug"]
+    },
+    {
+      "name": "macos-clang-release",
+      "displayName": "macOS Clang Release",
+      "inherits": ["macos-clang", "base-release"]
     }
   ],
   "buildPresets": [
@@ -109,6 +133,16 @@
     {
       "name": "linux-gcc-release",
       "configurePreset": "linux-gcc-release",
+      "jobs": 0
+    },
+    {
+      "name": "macos-clang-debug",
+      "configurePreset": "macos-clang-debug",
+      "jobs": 0
+    },
+    {
+      "name": "macos-clang-release",
+      "configurePreset": "macos-clang-release",
       "jobs": 0
     }
   ],
@@ -133,6 +167,11 @@
       "name": "linux-test",
       "inherits": "test-base",
       "configurePreset": "linux-gcc-debug"
+    },
+    {
+      "name": "macos-test",
+      "inherits": "test-base",
+      "configurePreset": "macos-clang-debug"
     }
   ]
 }
