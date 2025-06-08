@@ -1,0 +1,105 @@
+name: Windows workflow
+
+on:
+  push: # todo: remove this, and disable push to main branch, now keep it
+    branches: [ "main" ]
+  pull_request:
+    # we use main as like the develop branch for simplicity
+    branches: [ "main" ]
+  # enable we can run workflow manually
+  workflow_dispatch: # no args
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    # === Matrix 策略：基于您的实际预设名称 ===
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build_type: Debug
+            configure_preset: windows-msvc-debug
+            build_preset: windows-msvc-debug
+            test_preset: windows-test
+            display_name: "Windows MSVC Debug"
+          
+          - build_type: Release
+            configure_preset: windows-msvc-release
+            build_preset: windows-msvc-release
+            test_preset: windows-test
+            display_name: "Windows MSVC Release"
+    
+    # 动态生成 job 名称
+    name: ${{ matrix.display_name }}
+    
+    env:
+      # use vcpkg that is checked out as a submodule with main project
+      _VCPKG_: ${{ github.workspace }}/vcpkg
+      # set the vcpkg binary cache directory
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+      # clear all caches before using
+      # use vcpkg's GitHub Actions cache integration
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+    steps:
+    # build environment setup
+    - name: Export GitHub Actions cache environment variables
+      uses: actions/github-script@v7
+      with:
+        # setup cache authentication token and url
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+    # 1. checkout our code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: true # note: for vcpkg submodule
+
+    - name: Create vcpkg binary cache directory
+      run: mkdir -p ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+      shell: bash
+
+    # 2. configure cmake, ninja and so on...
+    - name: Setup latest CMake and Ninja
+      uses: lukka/get-cmake@latest
+
+    # 3. setup MSVC environment
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    # 4. setup vcpkg cache
+    - name: Restore vcpkg cache
+      uses: actions/cache@v4
+      with:
+        # we cache all vcpkg's contents
+        # but excludes buildtrees, packages, downloads and installed directories
+        path: |
+          ${{ env._VCPKG_ }}
+          !${{ env._VCPKG_ }}/buildtrees
+          !${{ env._VCPKG_ }}/packages
+          !${{ env._VCPKG_ }}/downloads
+          !${{ env._VCPKG_ }}/installed
+        # if vcpkg.json is changed or vcpkg changed, we need to rebuild vcpkg cache
+        key: vcpkg-${{ hashFiles('.git/modules/vcpkg/HEAD', 'vcpkg.json') }}
+        # set different restore keys
+        # 1. vcpkg and vcpkg.json are not changed: use cached vcpkg and binary cache
+        # 2. vcpkg is not changed, but vcpkg.json is changed: use cached vcpkg, and rebuild packages
+        # 3. all changed, use build step, and re-cached after workflow
+        restore-keys: |
+          vcpkg-${{ hashFiles('.git/modules/vcpkg/HEAD') }}
+          vcpkg-
+
+    # === 构建流程：使用 matrix 中定义的预设名称 ===
+    - name: Configure CMake (${{ matrix.build_type }})
+      run: cmake --preset ${{ matrix.configure_preset }}
+
+    - name: Build project (${{ matrix.build_type }})
+      run: cmake --build --preset ${{ matrix.build_preset }}
+
+    - name: Run tests (${{ matrix.build_type }})
+      run: ctest --preset ${{ matrix.test_preset }}
