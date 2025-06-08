@@ -86,7 +86,7 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1
 
     # === 构建流程：CMake 配置、构建、测试 ===
-    
+
     # 7. 配置 CMake（vcpkg 会自动处理依赖包的安装和缓存）
     - name: Configure CMake (${{ matrix.build_type }})
       run: cmake --preset ${{ matrix.configure_preset }}
