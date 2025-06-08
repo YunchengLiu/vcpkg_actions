@@ -12,7 +12,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    
+
     # === Matrix 策略：基于您的实际预设名称 ===
     strategy:
       fail-fast: false
@@ -23,68 +23,78 @@ jobs:
             build_preset: windows-msvc-debug
             test_preset: windows-test
             display_name: "Windows MSVC Debug"
-          
+
           - build_type: Release
             configure_preset: windows-msvc-release
             build_preset: windows-msvc-release
             test_preset: windows-test
             display_name: "Windows MSVC Release"
-    
+
     # 动态生成 job 名称
     name: ${{ matrix.display_name }}
-    
+
     env:
-      # 完全按照参考模板的方式
+      # vcpkg 子模块的路径
       _VCPKG_: ${{ github.workspace }}/vcpkg
+      # vcpkg 二进制缓存目录（存储编译好的包）
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg/bincache
+      # 使用 GitHub Actions 作为 vcpkg 的二进制缓存后端
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
-    # === 按照参考模板的确切顺序和方式 ===
-    
-    # 1. 缓存环境变量设置
+    # === 构建环境设置 ===
+
+    # 1. 设置 GitHub Actions 缓存服务的认证信息
+    # 这样 vcpkg 可以使用 GitHub Actions 作为二进制包缓存
     - uses: actions/github-script@v7
       with:
         script: |
           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-    # 2. 检出代码
+    # 2. 检出代码和 vcpkg 子模块
     - uses: actions/checkout@v4
       with:
         submodules: true
 
-    # 3. 创建缓存目录（完全按照参考模板）
+    # 3. 创建 vcpkg 二进制缓存目录
     - name: "Create directory '${{ env.VCPKG_DEFAULT_BINARY_CACHE }}'"
       run: mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
       shell: bash
 
-    # 4. 安装工具
+    # 4. 安装最新的 CMake 和 Ninja 工具
     - uses: lukka/get-cmake@latest
 
-    # 5. vcpkg 缓存（按照参考模板的缓存键）
-    - name: Restore vcpkg
+    # 5. 缓存 vcpkg 工具本身（避免重复 bootstrap 和下载端口定义）
+    # 注意：这里缓存的是 vcpkg 工具、端口定义、版本数据库等
+    # 而不是编译好的包（包的缓存由 VCPKG_BINARY_SOURCES 处理）
+    - name: Restore vcpkg tools and port definitions
       uses: actions/cache@v4
       with:
         path: |
           ${{ env._VCPKG_ }}
-          !${{ env._VCPKG_ }}/buildtrees
-          !${{ env._VCPKG_ }}/packages
-          !${{ env._VCPKG_ }}/downloads
-          !${{ env._VCPKG_ }}/installed
-        # 使用参考模板的简单缓存键
+          !${{ env._VCPKG_ }}/buildtrees    # 排除：临时构建文件
+          !${{ env._VCPKG_ }}/packages      # 排除：包的中间产物
+          !${{ env._VCPKG_ }}/downloads     # 排除：下载的源码包
+          !${{ env._VCPKG_ }}/installed     # 排除：本地安装的包
+        # 缓存键：基于 vcpkg 的 git 提交哈希
+        # 当 vcpkg 版本更新时，缓存会自动失效
         key: |
           ${{ hashFiles( '.git/modules/vcpkg/HEAD' )}}
 
-    # 6. MSVC 设置（在缓存之后）
+    # 6. 设置 MSVC 编译环境
     - uses: ilammy/msvc-dev-cmd@v1
 
-    # 7. 构建流程
+    # === 构建流程：CMake 配置、构建、测试 ===
+    
+    # 7. 配置 CMake（vcpkg 会自动处理依赖包的安装和缓存）
     - name: Configure CMake (${{ matrix.build_type }})
       run: cmake --preset ${{ matrix.configure_preset }}
 
+    # 8. 构建项目
     - name: Build project (${{ matrix.build_type }})
       run: cmake --build --preset ${{ matrix.build_preset }}
 
+    # 9. 运行测试
     - name: Run tests (${{ matrix.build_type }})
       run: ctest --preset ${{ matrix.test_preset }}
